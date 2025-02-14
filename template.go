@@ -157,13 +157,39 @@ var homeTemplate = template.Must(template.New("home").Parse(`
                         </svg>
                         Your shortened URL:
                     </p>
-                    <a :href="shortUrl" target="_blank" class="text-blue-400 hover:text-blue-300 break-all block mb-2">[[ shortUrl ]]</a>
-                    <a :href="'/stats/' + shortUrl.split('/').pop()" target="_blank" class="text-sm text-gray-400 hover:text-gray-300 flex items-center">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                        View Statistics
-                    </a>
+                    <div class="flex items-center gap-2 mb-3">
+                        <a :href="shortUrl" target="_blank" class="text-blue-400 hover:text-blue-300 break-all flex-1">[[ shortUrl ]]</a>
+                        <button
+                            @click="copyToClipboard(shortUrl)"
+                            class="p-2 text-blue-400 hover:text-blue-300 bg-gray-800/50 rounded-lg transition-all hover:bg-gray-800/70"
+                            :title="copySuccess ? 'Copied!' : 'Copy to clipboard'"
+                        >
+                            <svg v-if="!copySuccess" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </button>
+                        <button
+                            @click="shareUrl(shortUrl)"
+                            class="p-2 text-blue-400 hover:text-blue-300 bg-gray-800/50 rounded-lg transition-all hover:bg-gray-800/70"
+                            title="Share URL"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <a :href="'/stats/' + shortUrl.split('/').pop()" class="text-sm text-gray-400 hover:text-gray-300 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            View Statistics
+                        </a>
+                        <span v-if="copySuccess" class="text-sm text-green-400 animate-fade-in">Copied to clipboard!</span>
+                    </div>
                 </div>
             </div>
 
@@ -194,338 +220,104 @@ var homeTemplate = template.Must(template.New("home").Parse(`
 
         </div>
     </div>
+    </div>
 <script>
-        new Vue({
-            el: '#app',
-            delimiters: ['[[', ']]'],
-            data: {
-                url: '',
-                shortUrl: ''
-            },
-            mounted() {
-                this.createParticles();
-            },
-            methods: {
-                async shortenUrl() {
-                    if (!this.url) return;
-
-                    try {
-                        const response = await fetch('/shorten', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ url: this.url })
-                        });
-                        if (!response.ok) {
-                            this.shortUrl = 'Error shortening URL';
-                            return;
-                        }
-                        const data = await response.json();
-                        this.shortUrl = data.short_url;
-                        this.createSuccessParticles();
-                    } catch (error) {
-                        console.error(error);
-                        this.shortUrl = 'Error shortening URL';
-                    }
-                },
-                createParticles() {
-                    const particles = 20;
-                    for (let i = 0; i < particles; i++) {
-                        setTimeout(() => {
-                            const particle = document.createElement('div');
-                            particle.className = 'particle';
-
-                            const x = Math.random() * window.innerWidth;
-                            const y = Math.random() * window.innerHeight;
-                            const size = Math.random() * 3 + 1;
-                            const tx = (Math.random() - 0.5) * 200;
-                            const ty = (Math.random() - 0.5) * 200;
-
-                            particle.style.cssText = 'left: ' + x + 'px;' +
-                                'top: ' + y + 'px;' +
-                                'width: ' + size + 'px;' +
-                                'height: ' + size + 'px;' +
-                                '--tx: ' + tx + 'px;' +
-                                '--ty: ' + ty + 'px;' +
-                                'animation: particle-animation 3s ease-in infinite;';
-
-                            document.body.appendChild(particle);
-
-                            setTimeout(() => {
-                                document.body.removeChild(particle);
-                            }, 3000);
-                        }, i * 200);
-                    }
-                },
-                createSuccessParticles() {
-                    this.createParticles();
-                }
+new Vue({
+    el: '#app',
+    delimiters: ['[[', ']]'],
+    data: {
+        url: '',
+        shortUrl: '',
+        copySuccess: false
+    },
+    mounted() {
+        this.createParticles();
+    },
+    methods: {
+        async copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                this.copySuccess = true;
+                setTimeout(() => {
+                    this.copySuccess = false;
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
             }
-        });
-    </script>
-</body>
-</html>
-`))
+        },
+        async shareUrl(url) {
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Shortened URL',
+                        text: 'Check out this shortened URL!',
+                        url: url
+                    });
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error('Error sharing:', err);
+                    }
+                }
+            } else {
+                await this.copyToClipboard(url);
+            }
+        },
+        async shortenUrl() {
+            if (!this.url) return;
 
-// Stats page template with dark theme
-// Stats page template with animated gradients
-var statsTemplate = template.Must(template.New("stats").Parse(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>URL Statistics</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <style>
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            try {
+                const response = await fetch('/shorten', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: this.url })
+                });
+                if (!response.ok) {
+                    this.shortUrl = 'Error shortening URL';
+                    return;
+                }
+                const data = await response.json();
+                this.shortUrl = data.short_url;
+                this.createSuccessParticles();
+            } catch (error) {
+                console.error(error);
+                this.shortUrl = 'Error shortening URL';
+            }
+        },
+        createParticles() {
+            const particles = 20;
+            for (let i = 0; i < particles; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+
+                    const x = Math.random() * window.innerWidth;
+                    const y = Math.random() * window.innerHeight;
+                    const size = Math.random() * 3 + 1;
+                    const tx = (Math.random() - 0.5) * 200;
+                    const ty = (Math.random() - 0.5) * 200;
+
+                    particle.style.cssText = 'left: ' + x + 'px;' +
+                        'top: ' + y + 'px;' +
+                        'width: ' + size + 'px;' +
+                        'height: ' + size + 'px;' +
+                        '--tx: ' + tx + 'px;' +
+                        '--ty: ' + ty + 'px;' +
+                        'animation: particle-animation 3s ease-in infinite;';
+
+                    document.body.appendChild(particle);
+
+                    setTimeout(() => {
+                        document.body.removeChild(particle);
+                    }, 3000);
+                }, i * 200);
+            }
+        },
+        createSuccessParticles() {
+            this.createParticles();
         }
-
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-        }
-
-        body {
-            background: linear-gradient(-45deg, #1a237e, #121836, #2a3f9d, #1e3a8a);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-            min-height: 100vh;
-        }
-
-        .card-gradient {
-            background: linear-gradient(180deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .floating-card {
-            animation: float 6s ease-in-out infinite;
-        }
-
-        .stat-card {
-            background: linear-gradient(45deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
-            backdrop-filter: blur(5px);
-        }
-    </style>
-</head>
-<body>
-    <div class="min-h-screen flex items-center justify-center p-4">
-        <div class="max-w-2xl w-full floating-card">
-            <div class="card-gradient rounded-xl shadow-2xl p-8">
-                <h1 class="text-3xl font-bold mb-6 text-blue-200 flex items-center">
-                    <svg class="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    URL Statistics
-                </h1>
-
-                <div class="space-y-6">
-                    <div class="stat-card p-4 rounded-lg border border-gray-700">
-                        <p class="text-gray-400 text-sm mb-1">Original URL</p>
-                        <a href="{{.LongURL}}" target="_blank" class="text-blue-400 hover:text-blue-300 break-all">{{.LongURL}}</a>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="stat-card p-4 rounded-lg border border-gray-700">
-                            <p class="text-gray-400 text-sm mb-1">Total Views</p>
-                            <p class="text-2xl font-bold text-white">{{.ViewCount}}</p>
-                        </div>
-
-                        <div class="stat-card p-4 rounded-lg border border-gray-700">
-                            <p class="text-gray-400 text-sm mb-1">Unique Views</p>
-                            <p class="text-2xl font-bold text-white">{{.UniqueViewCount}}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-8 text-center">
-                    <a href="/" class="text-blue-400 hover:text-blue-300 flex items-center justify-center">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                        Back to URL Shortener
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-`))
-
-// Add new template for history page
-var historyTemplate = template.Must(template.New("history").Parse(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Your URL History - URL Shortener</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <style>
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-        }
-
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); }
-            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
-        }
-
-        @keyframes slideIn {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        body {
-            background: linear-gradient(-45deg, #0f172a, #1e3a8a, #0f172a, #1e3a8a);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-            min-height: 100vh;
-        }
-
-        .card-gradient {
-            background: linear-gradient(180deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .url-card {
-            transition: all 0.3s ease;
-            animation: slideIn 0.5s ease-out forwards;
-            opacity: 0;
-        }
-
-        .url-card:hover {
-            transform: translateY(-2px) scale(1.01);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            background: linear-gradient(45deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
-        }
-
-        .badge {
-            background: linear-gradient(45deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.2));
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            transition: all 0.3s ease;
-        }
-
-        .badge:hover {
-            background: linear-gradient(45deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3));
-            transform: translateY(-1px);
-        }
-
-        .glow-text {
-            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-        }
-
-        .floating-header {
-            animation: float 6s ease-in-out infinite;
-        }
-
-        .url-card:nth-child(1) { animation-delay: 0.1s; }
-        .url-card:nth-child(2) { animation-delay: 0.2s; }
-        .url-card:nth-child(3) { animation-delay: 0.3s; }
-        .url-card:nth-child(4) { animation-delay: 0.4s; }
-        .url-card:nth-child(5) { animation-delay: 0.5s; }
-    </style>
-</head>
-<body class="text-gray-100">
-    <div class="min-h-screen p-6">
-        <div class="max-w-6xl mx-auto">
-            <div class="floating-header flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
-                <div class="text-center md:text-left">
-                    <h1 class="text-4xl font-bold text-blue-200 glow-text mb-2">URL History</h1>
-                    <p class="text-gray-400">Track and manage your shortened URLs</p>
-                </div>
-                <a href="/" class="text-blue-400 hover:text-blue-300 flex items-center px-4 py-2 rounded-lg bg-gray-800/50 backdrop-blur-sm transition-all hover:bg-gray-800/70">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Back to Shortener
-                </a>
-            </div>
-
-            <div class="card-gradient rounded-xl p-6">
-                {{if .}}
-                    <div class="grid gap-4">
-                        {{range .}}
-                            <div class="url-card rounded-lg p-6 border border-gray-700/50">
-                                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div class="flex-1 space-y-3">
-                                        <div class="flex items-start justify-between">
-                                            <h3 class="text-lg font-medium text-blue-300 break-all">{{.LongURL}}</h3>
-                                            <span class="text-xs text-gray-500 whitespace-nowrap ml-4">
-                                                {{.CreatedAt.Format "Jan 02, 2006"}}
-                                            </span>
-                                        </div>
-
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <a href="/{{.ShortCode}}" class="text-blue-400 hover:text-blue-300 break-all text-sm bg-gray-800/50 px-3 py-1 rounded-md hover:bg-gray-800/70 transition-all">
-                                                {{.ShortCode}}
-                                            </a>
-                                            <div class="flex gap-2">
-                                                <span class="badge px-2 py-1 rounded-md text-xs text-blue-300">
-                                                    {{.UserInfo.Browser}}
-                                                </span>
-                                                <span class="badge px-2 py-1 rounded-md text-xs text-blue-300">
-                                                    {{.UserInfo.OS}}
-                                                </span>
-                                                <span class="badge px-2 py-1 rounded-md text-xs text-blue-300">
-                                                    {{.UserInfo.Device}}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div class="flex items-center justify-between mt-2">
-                                            <p class="text-xs text-gray-400">
-                                                Created: {{.CreatedAt.Format "15:04:05"}}
-                                            </p>
-                                            <a href="/stats/{{.ShortCode}}"
-                                               class="text-blue-400 hover:text-blue-300 flex items-center gap-2 text-sm bg-gray-800/50 px-3 py-1 rounded-md hover:bg-gray-800/70 transition-all">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                                </svg>
-                                                View Stats
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        {{end}}
-                    </div>
-                {{else}}
-                    <div class="text-center py-16">
-                        <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gray-800/50 flex items-center justify-center">
-                            <svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                            </svg>
-                        </div>
-                        <h2 class="text-2xl font-bold text-gray-400 mb-2">No URLs shortened yet</h2>
-                        <p class="text-gray-500 mb-6">Start shortening URLs to see your history here</p>
-                        <a href="/" class="inline-flex items-center px-4 py-2 text-blue-400 hover:text-blue-300 bg-gray-800/50 rounded-lg hover:bg-gray-800/70 transition-all">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Create your first short URL
-                        </a>
-                    </div>
-                {{end}}
-            </div>
-        </div>
-    </div>
+    }
+});
+</script>
 </body>
 </html>
 `))

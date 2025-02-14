@@ -29,10 +29,12 @@ type UserInfo struct {
 }
 
 type URLCreation struct {
-	ShortCode string    `json:"short_code"`
-	LongURL   string    `json:"long_url"`
-	CreatedAt time.Time `json:"created_at"`
-	UserInfo  UserInfo  `json:"user_info"`
+	ShortCode       string
+	LongURL         string
+	CreatedAt       time.Time
+	UserInfo        UserInfo
+	ViewCount       int // Add this field
+	UniqueViewCount int // Add this field
 }
 
 // Modify URLShortener struct to include user tracking
@@ -175,20 +177,6 @@ func (us *URLShortener) HandleShorten(w http.ResponseWriter, r *http.Request) {
 	resp := shortenResponse{ShortURL: shortURL}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
-}
-
-// Add new handler for user history
-func (us *URLShortener) HandleHistory(w http.ResponseWriter, r *http.Request) {
-	ip := getIP(r)
-
-	us.mu.RLock()
-	history := us.userHistory[ip]
-	us.mu.RUnlock()
-
-	w.Header().Set("Content-Type", "text/html")
-	if err := historyTemplate.Execute(w, history); err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
 }
 
 // generateShortCode returns a base62-encoded string from a random integer.
