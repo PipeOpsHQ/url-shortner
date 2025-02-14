@@ -224,6 +224,7 @@ var homeTemplate = template.Must(template.New("home").Parse(`
 	<meta name="keywords" content="URL shortener, link shortener, shorten URL, free URL shortener">
 	<meta name="robots" content="index, follow">
 	<link rel="canonical" href="https://url.pipeops.app/">
+	<meta property="og:image" content="https://pipeops.io/apple-touch-icon.png">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
     <style>
