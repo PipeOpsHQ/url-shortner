@@ -348,6 +348,10 @@ new Vue({
         deleting: {},
         deleteError: null
     },
+    mounted() {
+        this.showDeleteConfirm = false
+        this.showHelp = false
+    },
     methods: {
         confirmDelete(shortCode) {
             this.deletingShortCode = shortCode;
