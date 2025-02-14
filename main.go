@@ -215,9 +215,15 @@ var homeTemplate = template.Must(template.New("home").Parse(`
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>URL Shortener</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta charset="UTF-8">
+	<title>URL Shortener - Shorten your links instantly</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<!-- SEO Meta Tags -->
+	<meta name="description" content="Shorten your URLs easily and quickly with our URL shortener service. Share your links without the clutter of long URLs.">
+	<meta name="keywords" content="URL shortener, link shortener, shorten URL, free URL shortener">
+	<meta name="robots" content="index, follow">
+	<link rel="canonical" href="https://url.pipeops.app/">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
     <style>
