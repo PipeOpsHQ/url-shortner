@@ -574,5 +574,9 @@ func main() {
 	http.HandleFunc("/", shortener.HandleRedirect)
 
 	fmt.Println("Server started at :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	port := "8080"
+	if os.Getenv("PORT") != "" {
+		port = os.Getenv("PORT")
+	}
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
 }
