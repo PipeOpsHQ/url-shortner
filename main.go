@@ -539,14 +539,7 @@ func serveHomePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Set the domain appropriately.
-	domain := "http://localhost:8080"
-
-	if os.Getenv("DOMAIN") != "" {
-		domain = os.Getenv("DOMAIN")
-	}
-
-	shortener := NewURLShortener(domain)
+	shortener := NewURLShortener(os.Getenv("DOMAIN"))
 
 	// API endpoint to shorten URLs.
 	http.HandleFunc("/shorten", shortener.HandleShorten)
