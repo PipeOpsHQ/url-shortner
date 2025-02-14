@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
-	//	"sync/atomic"
-	"github.com/google/uuid"
+	"time"
 )
 
 const (
@@ -58,14 +58,17 @@ func NewURLShortener(domain string) *URLShortener {
 	}
 }
 
-// generateShortCode returns a base62-encoded string.
+// generateShortCode returns a base62-encoded string from a random integer.
 func (us *URLShortener) generateShortCode() string {
-	id := uuid.New()
-	return id.String()
+	// Seed the random generator (ideally, do this once in your program's initialization)
+	rand.Seed(time.Now().UnixNano())
+	// Generate a random int64 value.
+	num := rand.Int63()
+	return encodeBase62(num)
 }
 
 // encodeBase62 converts a number to a base62 string and pads it to a fixed length.
-func encodeBase62(num uint64) string {
+func encodeBase62(num int64) string {
 	if num == 0 {
 		return fmt.Sprintf("%0*s", codeLength, "0")
 	}
