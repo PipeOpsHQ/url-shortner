@@ -573,10 +573,10 @@ func main() {
 	// All other requests handled by HandleRedirect (home page or redirection).
 	http.HandleFunc("/", shortener.HandleRedirect)
 
-	fmt.Println("Server started at :8080")
 	port := "8080"
 	if os.Getenv("PORT") != "" {
 		port = os.Getenv("PORT")
 	}
+	fmt.Println("Server started at :", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
 }
