@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	//	"sync/atomic"
@@ -540,6 +541,11 @@ func serveHomePage(w http.ResponseWriter, r *http.Request) {
 func main() {
 	// Set the domain appropriately.
 	domain := "http://localhost:8080"
+
+	if os.Getenv("DOMAIN") != "" {
+		domain = os.Getenv("DOMAIN")
+	}
+	
 	shortener := NewURLShortener(domain)
 
 	// API endpoint to shorten URLs.
