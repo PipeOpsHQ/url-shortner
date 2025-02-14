@@ -313,6 +313,7 @@ func main() {
 	http.HandleFunc("/", shortener.HandleRedirect)
 	// Add the new route in main()
 	http.HandleFunc("/history", shortener.HandleHistory)
+	http.HandleFunc("/delete/", shortener.HandleDelete)
 
 	port := "8080"
 	if os.Getenv("PORT") != "" {

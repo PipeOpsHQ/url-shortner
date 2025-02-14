@@ -110,6 +110,10 @@ var homeTemplate = template.Must(template.New("home").Parse(`
             0% { transform: translate(0, 0); opacity: 1; }
             100% { transform: translate(var(--tx), var(--ty)); opacity: 0; }
         }
+
+        .input-gradient {
+            background: linear-gradient(to bottom, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -120,24 +124,53 @@ var homeTemplate = template.Must(template.New("home").Parse(`
 
             <div class="card-gradient rounded-xl shadow-2xl p-8 space-y-6">
 				<div class="space-y-4">
-					<div>
+                    <div>
                         <label class="block text-gray-300 text-sm font-medium mb-2">Enter URL</label>
                         <div class="relative">
                             <input
                                 v-model="url"
                                 type="url"
                                 placeholder="https://example.com"
-                                class="w-full px-4 py-3 input-gradient border border-gray-700 rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                @input="validateUrl"
+                                @paste="handlePaste"
+                                class="w-full px-4 py-3 input-gradient border rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-colors duration-200"
+                                :class="{
+                                    'border-gray-700': !url || (url && isValidUrl),
+                                    'border-red-500 focus:ring-red-500': url && !isValidUrl,
+                                    'border-green-500 focus:ring-green-500': url && isValidUrl
+                                }"
                                 required
                             >
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" v-show="url" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                <!-- Valid URL Icon -->
+                                <svg v-if="url && isValidUrl" class="h-5 w-5 text-green-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <!-- Invalid URL Icon -->
+                                <svg v-else-if="url && !isValidUrl" class="h-5 w-5 text-red-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <!-- URL Icon -->
+                                <svg v-else class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                                 </svg>
                             </div>
                         </div>
+                        <!-- Validation Message -->
+                        <transition
+                            enter-active-class="transition ease-out duration-200"
+                            enter-from-class="opacity-0 -translate-y-1"
+                            enter-to-class="opacity-100 translate-y-0"
+                            leave-active-class="transition ease-in duration-150"
+                            leave-from-class="opacity-100 translate-y-0"
+                            leave-to-class="opacity-0 -translate-y-1"
+                        >
+                            <p v-if="url && !isValidUrl" class="mt-2 text-red-400 text-sm">
+                                Please enter a valid URL (e.g., https://example.com)
+                            </p>
+                        </transition>
                     </div>
-				</div>
+
 
                     <button
                         @click="shortenUrl"
@@ -234,6 +267,39 @@ new Vue({
         this.createParticles();
     },
     methods: {
+        validateUrl() {
+            if (!this.url) {
+                this.isValidUrl = false;
+                return;
+            }
+
+            try {
+                // Try to construct a URL object
+                const urlObj = new URL(this.url);
+                // Check if protocol is http or https
+                this.isValidUrl = urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+
+                // Additional validation for minimum domain length
+                const hostParts = urlObj.hostname.split('.');
+                if (hostParts.length < 2 || hostParts.some(part => part.length === 0)) {
+                    this.isValidUrl = false;
+                }
+            } catch {
+                this.isValidUrl = false;
+            }
+        },
+        handlePaste(e) {
+            // Allow paste event to complete before validation
+            setTimeout(() => {
+                this.validateUrl();
+            }, 0);
+        },
+        autoCorrectUrl() {
+            if (this.url && !this.url.startsWith('http://') && !this.url.startsWith('https://')) {
+                this.url = 'https://' + this.url;
+                this.validateUrl();
+            }
+        },
         async copyToClipboard(text) {
             try {
                 await navigator.clipboard.writeText(text);
@@ -263,24 +329,24 @@ new Vue({
             }
         },
         async shortenUrl() {
-            if (!this.url) return;
-
-            try {
-                const response = await fetch('/shorten', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: this.url })
-                });
-                if (!response.ok) {
+            if (this.isValidUrl) {
+                try {
+                    const response = await fetch('/shorten', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: this.url })
+                    });
+                    if (!response.ok) {
+                        this.shortUrl = 'Error shortening URL';
+                        return;
+                    }
+                    const data = await response.json();
+                    this.shortUrl = data.short_url;
+                    this.createSuccessParticles();
+                } catch (error) {
+                    console.error(error);
                     this.shortUrl = 'Error shortening URL';
-                    return;
                 }
-                const data = await response.json();
-                this.shortUrl = data.short_url;
-                this.createSuccessParticles();
-            } catch (error) {
-                console.error(error);
-                this.shortUrl = 'Error shortening URL';
             }
         },
         createParticles() {
@@ -315,6 +381,18 @@ new Vue({
         createSuccessParticles() {
             this.createParticles();
         }
+    },
+    watch: {
+        url(newVal) {
+            // Auto-correct URL after a short delay when user stops typing
+            clearTimeout(this.urlTimer);
+            this.urlTimer = setTimeout(() => {
+                this.autoCorrectUrl();
+            }, 1000);
+        }
+    },
+    beforeDestroy() {
+        clearTimeout(this.urlTimer);
     }
 });
 </script>

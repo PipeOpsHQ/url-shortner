@@ -5,12 +5,42 @@ import (
     "html/template"
     "log"
     "net/http"
+    "strings"
 )
 
 // HistoryData represents the template data structure
 type HistoryData struct {
     URLs   []URLCreation
     Domain string
+}
+
+func (us *URLShortener) HandleDelete(w http.ResponseWriter, r *http.Request) {
+    shortCode := strings.TrimPrefix(r.URL.Path, "/delete/")
+    if shortCode == "" {
+        http.Error(w, "Bad request", http.StatusBadRequest)
+        return
+    }
+
+    ip := getIP(r)
+
+    us.mu.Lock()
+    defer us.mu.Unlock()
+
+    // Remove from user history
+    if urls, ok := us.userHistory[ip]; ok {
+        filtered := urls[:0]
+        for _, u := range urls {
+            if u.ShortCode != shortCode {
+                filtered = append(filtered, u)
+            }
+        }
+        us.userHistory[ip] = filtered
+    }
+
+    // Remove from main store
+    delete(us.store, shortCode)
+
+    w.WriteHeader(http.StatusOK)
 }
 
 // HandleHistory handles the URL history page request
@@ -139,9 +169,11 @@ var historyTemplate = template.Must(template.New("history").Parse(`
         .url-card:nth-child(3) { animation-delay: 0.3s; }
         .url-card:nth-child(4) { animation-delay: 0.4s; }
         .url-card:nth-child(5) { animation-delay: 0.5s; }
+
+        [v-cloak] { display: none; }
     </style>
 </head>
-<body class="text-gray-100">
+<body  class="text-gray-100">
     <div class="min-h-screen p-6" id="history-app">
         <div class="max-w-6xl mx-auto">
             <div class="floating-header flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
@@ -222,6 +254,18 @@ var historyTemplate = template.Must(template.New("history").Parse(`
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                                                 </svg>
                                             </button>
+                                            <button
+                                                @click="confirmDelete('{{.ShortCode}}')"
+                                                class="text-red-400 hover:text-red-300 transition-colors flex items-center gap-2 badge px-3 py-1 rounded-md text-sm"
+                                                title="Delete URL"
+                                                :disabled="deleting['{{.ShortCode}}']"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                <span v-if="deleting['{{.ShortCode}}']">Deleting...</span>
+                                                <span v-else>Delete</span>
+                                             </button>
                                         </div>
                                         <!-- Only show analytics if viewing is being tracked -->
                                         {{if gt .ViewCount 0}}
@@ -270,47 +314,104 @@ var historyTemplate = template.Must(template.New("history").Parse(`
                 {{end}}
             </div>
         </div>
+        <!-- Add confirmation modal -->
+        <div v-if="showDeleteConfirm" class="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
+            <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
+                <h2 class="text-2xl font-bold text-red-500 mb-4">Delete URL?</h2>
+                <p class="text-gray-400 mb-6">Are you sure you want to delete this shortened URL? This action cannot be undone.</p>
+                <div class="flex gap-4">
+                    <button
+                        @click="deleteUrl()"
+                        class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition-colors"
+                    >
+                        Delete URL
+                    </button>
+                    <button
+                        @click="cancelDelete()"
+                        class="flex-1 bg-gray-700 text-gray-300 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script>
-    new Vue({
-        el: '#history-app',
-        data: {
-            copySuccess: {},
-            showHelp: false
+<script>
+new Vue({
+    el: '#history-app',
+    data: {
+        copySuccess: {},
+        showHelp: false,
+        showDeleteConfirm: false, // initially hidden
+        deletingShortCode: null,
+        deleting: {},
+        deleteError: null
+    },
+    methods: {
+        confirmDelete(shortCode) {
+            this.deletingShortCode = shortCode;
+            this.showDeleteConfirm = true;
         },
-        methods: {
-            async copyToClipboard(text) {
+        cancelDelete() {
+            this.deletingShortCode = null;
+            this.showDeleteConfirm = false;
+            this.deleteError = null;
+        },
+
+        async deleteUrl() {
+            if (!this.deletingShortCode) return;
+
+            this.$set(this.deleting, this.deletingShortCode, true);
+            try {
+                const response = await fetch('/delete/' + this.deletingShortCode, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) throw new Error('Failed to delete URL');
+
+                window.location.reload(); // Refresh to get updated list
+            } catch (error) {
+                console.error('Delete error:', error);
+                this.deleteError = 'Failed to delete URL. Please try again.';
+            } finally {
+                this.$set(this.deleting, this.deletingShortCode, false);
+            }
+        },
+
+        async copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                this.$set(this.copySuccess, text.split('/').pop(), true);
+                setTimeout(() => {
+                    this.$set(this.copySuccess, text.split('/').pop(), false);
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        },
+
+        async shareUrl(url) {
+            if (navigator.share) {
                 try {
-                    await navigator.clipboard.writeText(text);
-                    this.$set(this.copySuccess, text.split('/').pop(), true);
-                    setTimeout(() => {
-                        this.$set(this.copySuccess, text.split('/').pop(), false);
-                    }, 2000);
+                    await navigator.share({
+                        title: 'Shortened URL',
+                        text: 'Check out this shortened URL!',
+                        url: url
+                    });
                 } catch (err) {
-                    console.error('Failed to copy:', err);
-                }
-            },
-            async shareUrl(url) {
-                if (navigator.share) {
-                    try {
-                        await navigator.share({
-                            title: 'Shortened URL',
-                            text: 'Check out this shortened URL!',
-                            url: url
-                        });
-                    } catch (err) {
-                        if (err.name !== 'AbortError') {
-                            console.error('Error sharing:', err);
-                        }
+                    if (err.name !== 'AbortError') {
+                        console.error('Error sharing:', err);
                     }
-                } else {
-                    await this.copyToClipboard(url);
                 }
+            } else {
+                await this.copyToClipboard(url);
             }
         }
-    });
-    </script>
+    }
+});
+</script>
 </body>
 </html>
 `))
