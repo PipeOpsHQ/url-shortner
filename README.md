@@ -34,7 +34,6 @@ This URL shortener allows users to:
 - (Optional) A database setup if you plan to persist shortened URLs (e.g., SQLite, Redis, etc.)
 
 ### Installation
-
 1. **Clone the Repository**
 
    ```bash
