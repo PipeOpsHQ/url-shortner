@@ -15,7 +15,7 @@ import (
 
 const (
 	base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-	codeLength  = 6 // Fixed length for the short code
+	codeLength  = 7 // Fixed length for the short code
 )
 
 // Add these new types to track user information and URL history
